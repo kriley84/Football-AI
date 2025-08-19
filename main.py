@@ -1,69 +1,47 @@
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
-import requests
 import os
+import requests
 
 app = FastAPI()
 
-API_FOOTBALL_KEY = os.getenv("API_FOOTBALL_KEY")  # Set this in Render Environment Variables
+API_KEY = os.getenv("API_FOOTBALL_KEY")
+API_HOST = "api-football-v1.p.rapidapi.com"
 
-def get_live_fixtures():
-    """Fetch next 10 Premier League fixtures from API-Football"""
-    url = "https://api-football-v1.p.rapidapi.com/v3/fixtures"
-    querystring = {"league": "39", "season": "2025", "next": "10"}  # 39 = EPL
+def get_fixtures():
+    url = f"https://{API_HOST}/v3/fixtures"
+    query = {"league": "39", "season": "2024", "next": "5"}  # 39 = EPL
     headers = {
-        "x-rapidapi-host": "api-football-v1.p.rapidapi.com",
-        "x-rapidapi-key": API_FOOTBALL_KEY
+        "x-rapidapi-host": API_HOST,
+        "x-rapidapi-key": API_KEY
     }
-    response = requests.get(url, headers=headers, params=querystring)
+    r = requests.get(url, headers=headers, params=query)
+    data = r.json()
 
-    if response.status_code != 200:
-        print(f"API error: {response.status_code}")
-        return []
+    # Log API response in Render logs
+    print("API response:", data)
 
-    data = response.json()
     fixtures = []
-    for f in data["response"]:
-        home = f["teams"]["home"]["name"]
-        away = f["teams"]["away"]["name"]
-
-        # Placeholder probability (replace later with real odds/xG logic)
-        win_pct = 60.0 if f["teams"]["home"]["winner"] is True else 40.0
-
+    for match in data.get("response", []):
         fixtures.append({
-            "fixture": f"{home} vs {away}",
-            "team": home,
-            "score": win_pct
+            "home": match["teams"]["home"]["name"],
+            "away": match["teams"]["away"]["name"],
+            "date": match["fixture"]["date"]
         })
     return fixtures
 
+@app.get("/test", response_class=HTMLResponse)
+def test():
+    fixtures = get_fixtures()
+    if not fixtures:
+        return HTMLResponse("<h2>No fixtures found (check API key or season year)</h2>")
+    
+    html = "<h1>Upcoming Premier League Fixtures</h1><ul>"
+    for f in fixtures:
+        html += f"<li>{f['home']} vs {f['away']} ({f['date']})</li>"
+    html += "</ul>"
+    return HTMLResponse(html)
 
-def get_rating_color(score):
-    """Return color and score text based on win probability"""
-    if score < 40:
-        return f"<td style='background-color:red;color:white;text-align:center;'>{score:.0f}%</td>"
-    elif 40 <= score <= 60:
-        return f"<td style='background-color:orange;color:black;text-align:center;'>{score:.0f}%</td>"
-    else:
-        return f"<td style='background-color:green;color:white;text-align:center;'>{score:.0f}%</td>"
-
-
-@app.get("/fixtures", response_class=HTMLResponse)
-def fixtures():
-    fixtures_data = get_live_fixtures()
-    html = "<h1>Premier League Fixtures</h1><table border='1'><tr><th>Fixture</th><th>Team</th><th>Win %</th></tr>"
-    for match in fixtures_data:
-        html += f"<tr><td>{match['fixture']}</td><td>{match['team']}</td>{get_rating_color(match['score'])}</tr>"
-    html += "</table>"
-    return html
-
-
-@app.get("/recommendations", response_class=HTMLResponse)
-def recommendations():
-    fixtures_data = get_live_fixtures()
-    html = "<h1>Recommended Picks</h1><table border='1'><tr><th>Fixture</th><th>Team</th><th>Win %</th></tr>"
-    for match in fixtures_data:
-        if match['score'] >= 60:  # Example: only recommend high-probability wins
-            html += f"<tr><td>{match['fixture']}</td><td>{match['team']}</td>{get_rating_color(match['score'])}</tr>"
-    html += "</table>"
-    return html
+@app.get("/")
+def home():
+    return {"message": "Go to /test to check EPL fixtures"}
