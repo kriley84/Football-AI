@@ -10,7 +10,7 @@ API_HOST = "api-football-v1.p.rapidapi.com"
 
 def get_fixtures():
     url = f"https://{API_HOST}/v3/fixtures"
-    query = {"league": "39", "season": "2024", "next": "5"}  # 39 = EPL
+    query = {"league": "39", "season": "2025", "next": "5"}  # 39 = EPL
     headers = {
         "x-rapidapi-host": API_HOST,
         "x-rapidapi-key": API_KEY
