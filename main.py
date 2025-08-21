@@ -7,7 +7,7 @@ app = FastAPI()
 # Get API key from environment variable on Render OR hardcode for testing
 API_KEY = os.getenv("API_FOOTBALL_KEY", "your_real_api_key_here")
 
-@app.get("/")
+app.get("/")
 def home():
     return {"message": "Go to /fixtures to check EPL fixtures"}
 
